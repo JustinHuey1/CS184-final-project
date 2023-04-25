@@ -232,7 +232,14 @@ namespace CGL {
       case ' ':
         reset_camera();
         break;
-
+      case 'c':
+      case 'C':
+        collpaseSelectedEdge();
+        break;
+      case 'd':
+      case 'D':
+        mesh_up_sample();
+        break;
       case 'l':
       case 'L':
         mesh_up_sample();
@@ -977,6 +984,29 @@ namespace CGL {
     hoveredFeature.invalidate();
   }
 
+  void MeshEdit::mesh_down_sample()
+  {
+      HalfedgeMesh* mesh;
+
+      // If an element is selected, resample the mesh containing that
+      // element; otherwise, resample the first mesh in the scene.
+      if (selectedFeature.isValid())
+      {
+          mesh = &(selectedFeature.node->mesh);
+      }
+      else
+      {
+          mesh = &(meshNodes.begin()->mesh);
+      }
+
+      resampler.upsample(*mesh);
+
+      // Since the mesh may have changed, the selected and
+      // hovered features may no longer point to valid elements.
+      selectedFeature.invalidate();
+      hoveredFeature.invalidate();
+  }
+
   inline void MeshEdit::drawString(float x, float y, string str, size_t size, Color c)
   {
     int line_index = text_mgr.add_line(( x*2/screen_w) - 1.0,
@@ -1616,5 +1646,21 @@ namespace CGL {
     // hovered features may no longer point to valid elements.
     selectedFeature.invalidate();
     hoveredFeature.invalidate();
+  }
+
+  void MeshEdit::collpaseSelectedEdge(void)
+  {
+      Edge* e = NULL;
+      if (selectedFeature.isValid()) {
+          e = selectedFeature.element->getEdge();
+      }
+
+      if (e == NULL) { cerr << "Must select an edge." << endl; return; }
+      selectedFeature.node->mesh.collapseEdge(e->halfedge()->edge());
+
+      // Since the mesh may have changed, the selected and
+      // hovered features may no longer point to valid elements.
+      selectedFeature.invalidate();
+      hoveredFeature.invalidate();
   }
 } // namespace CMU462
