@@ -385,7 +385,9 @@ namespace CGL
           h->vertex() = v0; // Set h's vertex to v0
           h = h->twin()->next();               // move to the next outgoing half-edge of the vertex
       } while (h != v1->halfedge());
-
+      
+      v0 -> position = (v0 -> position + v1 -> position) / 2;
+    
       v0->halfedge() = h2t;
       v2->halfedge() = h1t;
       v3->halfedge() = h4t;
@@ -418,11 +420,10 @@ namespace CGL
   }
 
     void MeshResampler::simplification(HalfedgeMesh& mesh) {
-        int target = 0; // Target # of triangles/faces
+        int target = mesh.nFaces() / 2; // Target # of triangles/faces
         MutablePriorityQueue<EdgeRecord> queue;
         
         for (FaceIter f = mesh.facesBegin(); f != mesh.facesEnd(); f++) {
-            target += 1;
             Vector3D normal = f -> normal();
             Vector3D queryPosition = f -> halfedge() -> vertex() -> position;
             
@@ -436,8 +437,6 @@ namespace CGL
             
             f -> quadric = Matrix4x4(data);
         }
-
-        target /= 2.0;
         
         for (VertexIter v = mesh.verticesBegin(); v != mesh.verticesEnd(); v++) {
             Matrix4x4 sumQ = Matrix4x4();
