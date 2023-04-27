@@ -518,24 +518,29 @@ namespace CGL
 
         e->quadric = onePoint->quadric + otherPoint->quadric;
 
-        double data[9] = {};
+        double data[16] = {};
 
         for (int i = 0; i < 3; i++) {
-            for (int j = 0; j < 3; j++) {
-                data[i * 3 + j] = e->quadric(i, j);
+            for (int j = 0; j < 4; j++) {
+                data[i * 4 + j] = e->quadric(i, j);
             }
         }
+        
+        data[12] = 0;
+        data[13] = 0;
+        data[14] = 0;
+        data[15] = 1;
 
-        Matrix3x3 A = Matrix3x3(data);
-        Vector3D B = -1.0 * Vector3D(e->quadric(0, 3), e->quadric(1, 3), e->quadric(2, 3));
+        Matrix4x4 A = Matrix4x4(data);
+        Vector4D B = Vector4D(0.0, 0.0, 0.0, 1.0);
 
         // optimal point
-        Vector3D x = A.inv() * B;
+        Vector4D x = A.inv() * B;
 
         double cost = dot(x, e->quadric * x);
 
         this->edge = e;
-        this->optimalPoint = x;
+        this->optimalPoint = Vector3D(x.x, x.y, x.z);
         this->score = cost;
     }
 
