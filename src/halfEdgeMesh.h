@@ -525,6 +525,8 @@ namespace CGL
          bool isNew; ///< For Loop subdivision, this flag should be true if and only if this edge is a new edge created by subdivision (i.e., if it cuts across a triangle in the original mesh)
 
          EdgeRecord record;
+       
+       Matrix4x4 quadric;
 
       protected:
          HalfedgeIter _halfedge; ///< one of the two halfedges associated with this edge
@@ -630,6 +632,7 @@ namespace CGL
            EdgeIter       flipEdge( EdgeIter e ); ///< flip an edge, returning a pointer to the flipped edge
          VertexIter      splitEdge( EdgeIter e ); ///< split an edge, returning a pointer to the inserted midpoint vertex; the halfedge of this vertex should refer to one of the edges in the original mesh
          VertexIter   collapseEdge( EdgeIter e );
+       void   simplification( HalfedgeMesh& mesh );
 
          void check_for(HalfedgeIter h) {
           for (HalfedgeIter he = halfedgesBegin(); he != halfedgesEnd(); he++) {

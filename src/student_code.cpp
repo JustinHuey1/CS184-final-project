@@ -394,6 +394,71 @@ namespace CGL
       return v0;
   }
 
+    void HalfedgeMesh::simplification(HalfedgeMesh& mesh) {
+        MutablePriorityQueue<EdgeRecord> queue;
+        
+        for (FaceIter f = mesh.facesBegin(); f != mesh.facesEnd(); f++) {
+            Vector3D normal = f -> normal();
+            Vector3D queryPosition = f -> halfedge() -> vertex() -> position;
+            
+            double a = normal.x;
+            double b = normal.y;
+            double c = normal.z;
+            double d = -1.0 * dot(queryPosition, normal);
+            
+            double data[16] = {a * a, a * b, a * c, a * d, a * b, b * b, b * c, b * d,
+                a * c, b * c, c * c, c * d, a * d, b * d, c * d, d * d};
+            
+            f -> quadric = Matrix4x4(data);
+        }
+        
+        for (VertexIter v = mesh.verticesBegin(); v != mesh.verticesEnd(); v++) {
+            Matrix4x4 sumQ = Matrix4x4();
+            
+            HalfedgeIter h = v->halfedge();      // get the outgoing half-edge of the vertex
+            do {
+                sumQ += h -> getFace() -> quadric;
+
+                h = h -> twin() ->next();               // move to the next outgoing half-edge of the vertex
+            } while (h != v->halfedge());
+                       
+            v -> quadric = sumQ;
+        }
+        
+        for (EdgeIter e = mesh.edgesBegin(); e != mesh.edgesEnd(); e++) {
+            VertexIter onePoint = e -> halfedge() -> vertex();
+            VertexIter otherPoint = e -> halfedge() -> twin() -> vertex();
+            
+            e -> quadric = onePoint -> quadric + otherPoint -> quadric;
+        }
+        
+        for (EdgeIter e = mesh.edgesBegin(); e != mesh.edgesEnd(); e++) {
+           double data[9] = {};
+
+            for (int i = 0; i < 3; i++) {
+                for (int j = 0; j < 3; j++) {
+                    data[i * 3 + j] = e -> quadric(i, j);
+                }
+            }
+                        
+            Matrix3x3 A = Matrix3x3(data);
+            Vector3D B = -1.0 * Vector3D(e -> quadric(0, 3), e -> quadric(1, 3), e -> quadric(2, 3));
+            
+            // optimal point
+            Vector3D x = A.inv() * B;
+            
+            double cost = dot(x, e -> quadric * x);
+            
+            EdgeRecord *record = new EdgeRecord(e);
+            record -> optimalPoint = x;
+            record -> score = cost;
+            
+            queue.insert(*record);
+            
+            e -> record = *record;
+        }
+    }
+
   Vector3D neighbor_position_summer(VertexIter v) {
       Vector3D sum = Vector3D();
       HalfedgeCIter h = v->halfedge();      // get the outgoing half-edge of the vertex
