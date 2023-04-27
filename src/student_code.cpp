@@ -544,38 +544,6 @@ namespace CGL
         this->score = cost;
     }
 
-  EdgeRecord HalfedgeMesh::quadricUpdate(EdgeIter e) {
-      VertexIter onePoint = e->halfedge()->vertex();
-      VertexIter otherPoint = e->halfedge()->twin()->vertex();
-
-      e->quadric = onePoint->quadric + otherPoint->quadric;
-
-      double data[9] = {};
-
-      for (int i = 0; i < 3; i++) {
-          for (int j = 0; j < 3; j++) {
-              data[i * 3 + j] = e->quadric(i, j);
-          }
-      }
-
-      Matrix3x3 A = Matrix3x3(data);
-      Vector3D B = -1.0 * Vector3D(e->quadric(0, 3), e->quadric(1, 3), e->quadric(2, 3));
-
-      // optimal point
-      Vector3D x = A.inv() * B;
-
-      double cost = dot(x, e->quadric * x);
-
-      EdgeRecord record = EdgeRecord();
-      record.edge = e;
-      record.optimalPoint = x;
-      record.score = cost;
-
-      e->record = record;
-
-      return record;
-  }
-
   Vector3D neighbor_position_summer(VertexIter v) {
       Vector3D sum = Vector3D();
       HalfedgeCIter h = v->halfedge();      // get the outgoing half-edge of the vertex
