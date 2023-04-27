@@ -420,7 +420,7 @@ namespace CGL
             f -> quadric = Matrix4x4(data);
         }
 
-        target /= 2;
+        target /= 2.0;
         
         for (VertexIter v = mesh.verticesBegin(); v != mesh.verticesEnd(); v++) {
             Matrix4x4 sumQ = Matrix4x4();
@@ -441,6 +441,7 @@ namespace CGL
             
             queue.insert(record);
         }
+        // 3696 - 3668
 
         while (mesh.nFaces() > target) {
             EdgeRecord record = queue.top();
@@ -449,6 +450,7 @@ namespace CGL
             EdgeIter edge = record.edge;
             VertexIter onePoint = edge->halfedge()->vertex();
             VertexIter otherPoint = edge->halfedge()->twin()->vertex();
+            Matrix4x4 newQuadric = onePoint->quadric + otherPoint->quadric;
 
             // Delete all records that neighbors edge
             HalfedgeIter h1 = onePoint->halfedge();
@@ -471,9 +473,13 @@ namespace CGL
 
             // Then collapse
             VertexIter m = mesh.collapseEdge(edge);
-            m->quadric = onePoint->quadric + otherPoint->quadric;
+            if (m == mesh.verticesEnd()) {
+                continue;
+            }
+            m->quadric = newQuadric;
             m->position = record.optimalPoint;
 
+            // Add any edges touching the new vertex into the queue
             HalfedgeIter h = m->halfedge();
             do {
                 EdgeIter h_edge = h->edge();
