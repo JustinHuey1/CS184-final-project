@@ -91,6 +91,11 @@ namespace CGL
       queue.erase( queue.begin() );
     }
 
+    bool empty(void)
+    {
+        return queue.size() == 0;
+    }
+
   protected:
     set<T> queue;
   };

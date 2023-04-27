@@ -320,10 +320,6 @@ namespace CGL
   
   VertexIter HalfedgeMesh::collapseEdge(EdgeIter e0)
   {
-      if (e0->isBoundary()) {
-          return VertexIter();
-      }
-
       // Phase I
 
       HalfedgeIter h0 = e0->halfedge();
@@ -352,14 +348,37 @@ namespace CGL
       FaceIter f0 = h0->face();
       FaceIter f1 = h3->face();
 
-      // phase II
-      if (v1->isBoundary() || v2->isBoundary() ||
-          v1->degree() < 3 || v2->degree() < 3 ||
-          v1->degree() > 8 || v2->degree() > 8 ||
-          e0->length() == 0.0) {
+      // Detect if boundary or not manifold
+      if (v0->isBoundary() || v1->isBoundary() || v0->degree() < 2 || v1->degree() < 2) {
           return this->verticesEnd();
-      } // TODO??
+      }
 
+      // From https://stackoverflow.com/questions/27049163/mesh-simplification-edge-collapse-conditions
+      // The collapsing edge has two incident vertices. For both vertices, gather the adjacent vertices and calculate 
+      // the intersection of both sets. This intersection should contain exactly two vertices.
+      set<VertexIter> v0Vertices;
+      int count = 0;
+
+      HalfedgeIter v0Edge = v0->halfedge();
+      do {
+          v0Vertices.insert(v0Edge->twin()->vertex());
+          v0Edge = v0Edge->twin()->next();
+      } while (v0Edge != v0->halfedge());
+
+      // Loop through second
+      HalfedgeIter v1Edge = v1->halfedge();
+      do {
+          if (v0Vertices.find(v1Edge->twin()->vertex()) != v0Vertices.end()) {
+              count++;
+          }
+          v1Edge = v1Edge->twin()->next();
+      } while (v1Edge != v1->halfedge());
+      if (count != 2) {
+          return this->verticesEnd();
+      }
+
+      // phase II
+      // Editing part
       // Set all outgoing halfedges from v1 to v0
       HalfedgeIter h = v1->halfedge();      // get the outgoing half-edge of the vertex
       do {
@@ -378,8 +397,6 @@ namespace CGL
       h2t->setNeighbors(h2t->next(), h1t, v0, e2, h2t->face());
       h4t->setNeighbors(h4t->next(), h5t, v3, e3, h4t->face());
       h5t->setNeighbors(h5t->next(), h4t, v0, e3, h5t->face());
-
-      v0->position = (v0->position + v1->position) / 2.0;
 
       deleteHalfedge(h0);
       deleteHalfedge(h1);
@@ -444,6 +461,9 @@ namespace CGL
         // 3696 - 3668
 
         while (mesh.nFaces() > target) {
+            if (queue.empty()) {
+                break;
+            }
             EdgeRecord record = queue.top();
             queue.pop();
 
