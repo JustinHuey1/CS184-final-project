@@ -238,7 +238,7 @@ namespace CGL {
         break;
       case 'd':
       case 'D':
-        mesh_up_sample();
+        mesh_down_sample();
         break;
       case 'l':
       case 'L':
@@ -999,7 +999,7 @@ namespace CGL {
           mesh = &(meshNodes.begin()->mesh);
       }
 
-      resampler.upsample(*mesh);
+      resampler.simplification(*mesh);
 
       // Since the mesh may have changed, the selected and
       // hovered features may no longer point to valid elements.
