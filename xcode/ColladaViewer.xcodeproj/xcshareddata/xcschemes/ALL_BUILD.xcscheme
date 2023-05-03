@@ -52,7 +52,7 @@
       </BuildableProductRunnable>
       <CommandLineArguments>
          <CommandLineArgument
-            argument = "../dae/cow.dae"
+            argument = "../dae/monke.dae"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>

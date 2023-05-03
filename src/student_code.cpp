@@ -700,23 +700,7 @@ void MeshResampler::remeshing(HalfedgeMesh& mesh)
             mesh.splitEdge(currentEdge);
         }
     }
-    // Collapse edges less than 4/5 of mean
-    // This does not error but never stop running
-    /*bool restart = true;
-    while (restart) {
-        restart = false;
-
-        for (EdgeIter e = mesh.edgesBegin(); e != mesh.edgesEnd(); ) {
-            EdgeIter currentEdge = e;
-            e++;
-
-            if (currentEdge->length() < 4.0 / 5.0 * meanEdgeLength) {
-                mesh.collapseEdge(currentEdge);
-                restart = true;
-                break;
-            }
-        }
-    }*/
+    
     for (EdgeIter e = mesh.edgesBegin(); e != mesh.edgesEnd(); ) {
         EdgeIter currentEdge = e;
         e++;
@@ -782,12 +766,4 @@ void MeshResampler::remeshing(HalfedgeMesh& mesh)
     for (VertexIter v = mesh.verticesBegin(); v != mesh.verticesEnd(); v++) {
         v->position = v->centroid;
     }
-}
-
-int valence(VertexIter v0, VertexIter v1, VertexIter v2, VertexIter v3) {
-    return v0->degree() + v1->degree() + v2->degree() + v3->degree();
-}
-
-int opt_valence(VertexIter v0, VertexIter v1, VertexIter v2, VertexIter v3) {
-    return v0->isBoundary() ? 4 : 6 + v1->isBoundary() ? 4 : 6 + v2->isBoundary() ? 4 : 6 + v3->isBoundary() ? 4 : 6;
 }
