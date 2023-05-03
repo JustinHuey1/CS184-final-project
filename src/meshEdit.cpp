@@ -245,6 +245,11 @@ namespace CGL {
         mesh_up_sample();
         break;
 
+      case 'r':
+      case 'R':
+        remeshing();
+        break;
+
       case 'i':
       case 'I':
         showHUD = !showHUD;
@@ -1000,6 +1005,29 @@ namespace CGL {
       }
 
       resampler.simplification(*mesh);
+
+      // Since the mesh may have changed, the selected and
+      // hovered features may no longer point to valid elements.
+      selectedFeature.invalidate();
+      hoveredFeature.invalidate();
+  }
+
+  void MeshEdit::remeshing()
+  {
+      HalfedgeMesh* mesh;
+
+      // If an element is selected, resample the mesh containing that
+      // element; otherwise, resample the first mesh in the scene.
+      if (selectedFeature.isValid())
+      {
+          mesh = &(selectedFeature.node->mesh);
+      }
+      else
+      {
+          mesh = &(meshNodes.begin()->mesh);
+      }
+
+      resampler.remeshing(*mesh);
 
       // Since the mesh may have changed, the selected and
       // hovered features may no longer point to valid elements.

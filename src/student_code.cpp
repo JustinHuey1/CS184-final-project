@@ -616,9 +616,10 @@ namespace CGL
             HalfedgeIter prevTwin = e->halfedge()->twin()->next()->next();
 
             // Split
+            Vector3D newPos = e->newPosition;
             VertexIter newV = mesh.splitEdge(e);
             newV->isNew = true;
-            newV->newPosition = e->newPosition;
+            newV->newPosition = newPos;
 
             // Get the new halfedge with prevHalfedge, this is the new halfedge that lies on the original edge
             // Do not flip it, so set it's isNew to false
@@ -660,4 +661,106 @@ namespace CGL
     }
 
   }
+}
+
+// Return whether to flip or not
+bool should_flip(VertexIter v0, VertexIter v1, VertexIter v2, VertexIter v3) {
+    // Calculate the valence difference before and after the flip
+    int no_flip = abs(v0->degree() - v0->isBoundary() ? 4 : 6) +
+        abs(v1->degree() - v1->isBoundary() ? 4 : 6) +
+        abs(v2->degree() - v2->isBoundary() ? 4 : 6) +
+        abs(v3->degree() - v3->isBoundary() ? 4 : 6);
+    // If flip, v0 v1 valence -1, v2 v3 valence + 1
+    int flip = abs(v0->degree() - 1 - v0->isBoundary() ? 4 : 6) +
+        abs(v1->degree() - 1 - v1->isBoundary() ? 4 : 6) +
+        abs(v2->degree() + 1 - v2->isBoundary() ? 4 : 6) +
+        abs(v3->degree() + 1 - v3->isBoundary() ? 4 : 6);
+    return flip < no_flip;
+}
+
+void MeshResampler::remeshing(HalfedgeMesh& mesh)
+{
+    // Compute mean edge length
+    double totalEdgeLength = 0;
+    for (EdgeIter e = mesh.edgesBegin(); e != mesh.edgesEnd(); e++) {
+        totalEdgeLength += e->length();
+    }
+    double meanEdgeLength = totalEdgeLength / mesh.nEdges();
+    // Split edges over 4/3 of mean
+    for (EdgeIter e = mesh.edgesBegin(); e != mesh.edgesEnd(); ) {
+        EdgeIter currentEdge = e;
+        e++;
+
+        if (currentEdge->length() > 4.0 / 3.0 * meanEdgeLength) {
+            mesh.splitEdge(currentEdge);
+        }
+    }
+    // Collapse edges less than 4/5 of mean
+    // This does not error but never stop running
+    /*bool restart = true;
+    while (restart) {
+        restart = false;
+
+        for (EdgeIter e = mesh.edgesBegin(); e != mesh.edgesEnd(); ) {
+            EdgeIter currentEdge = e;
+            e++;
+
+            if (currentEdge->length() < 4.0 / 5.0 * meanEdgeLength) {
+                mesh.collapseEdge(currentEdge);
+                restart = true;
+                break;
+            }
+        }
+    }*/
+    for (EdgeIter e = mesh.edgesBegin(); e != mesh.edgesEnd(); ) {
+        EdgeIter currentEdge = e;
+        e++;
+
+        if (currentEdge->length() < 4.0 / 5.0 * meanEdgeLength) {
+            // Check if e will get decimated by collapse
+            HalfedgeIter h0 = currentEdge->halfedge();
+            HalfedgeIter h1 = h0->next();
+            HalfedgeIter h2 = h1->next();
+
+            HalfedgeIter h3 = h0->twin();
+            HalfedgeIter h4 = h3->next();
+            HalfedgeIter h5 = h4->next();
+
+            EdgeIter e1 = h1->edge();
+            EdgeIter e4 = h5->edge();
+            // e0 e1 e4 will get deleted
+            while (e == e1 || e == e4) {
+                e++;
+            }
+            
+            // Then collapse
+            mesh.collapseEdge(currentEdge);
+        }
+    }
+
+    // Flip edges that are not optimal, from the haoli slide
+    for (EdgeIter e = mesh.edgesBegin(); e != mesh.edgesEnd(); e++) {
+        HalfedgeIter h0 = e->halfedge();
+        HalfedgeIter h1 = h0->twin();
+        HalfedgeIter h2 = h0->next()->next();
+        HalfedgeIter h3 = h1->next()->next();
+
+        VertexIter v0 = h0->vertex();
+        VertexIter v1 = h1->vertex();
+        VertexIter v2 = h2->vertex();
+        VertexIter v3 = h3->vertex();
+
+        bool shouldFlip = should_flip(v0, v1, v2, v3);
+        if (shouldFlip) {
+            mesh.flipEdge(e);
+        }
+    }
+}
+
+int valence(VertexIter v0, VertexIter v1, VertexIter v2, VertexIter v3) {
+    return v0->degree() + v1->degree() + v2->degree() + v3->degree();
+}
+
+int opt_valence(VertexIter v0, VertexIter v1, VertexIter v2, VertexIter v3) {
+    return v0->isBoundary() ? 4 : 6 + v1->isBoundary() ? 4 : 6 + v2->isBoundary() ? 4 : 6 + v3->isBoundary() ? 4 : 6;
 }
