@@ -666,15 +666,20 @@ namespace CGL
 // Return whether to flip or not
 bool should_flip(VertexIter v0, VertexIter v1, VertexIter v2, VertexIter v3) {
     // Calculate the valence difference before and after the flip
-    int no_flip = abs(v0->degree() - v0->isBoundary() ? 4 : 6) +
-        abs(v1->degree() - v1->isBoundary() ? 4 : 6) +
-        abs(v2->degree() - v2->isBoundary() ? 4 : 6) +
-        abs(v3->degree() - v3->isBoundary() ? 4 : 6);
+    int v0Deg = v0->isBoundary() ? 4 : 6;
+    int v1Deg = v1->isBoundary() ? 4 : 6;
+    int v2Deg = v2->isBoundary() ? 4 : 6;
+    int v3Deg = v3->isBoundary() ? 4 : 6;
+    
+    int no_flip = abs(int(v0->degree() - v0Deg)) +
+        abs(int(v1->degree() - v1Deg)) +
+        abs(int(v2->degree() - v2Deg)) +
+        abs(int(v3->degree() - v3Deg));
     // If flip, v0 v1 valence -1, v2 v3 valence + 1
-    int flip = abs(v0->degree() - 1 - v0->isBoundary() ? 4 : 6) +
-        abs(v1->degree() - 1 - v1->isBoundary() ? 4 : 6) +
-        abs(v2->degree() + 1 - v2->isBoundary() ? 4 : 6) +
-        abs(v3->degree() + 1 - v3->isBoundary() ? 4 : 6);
+    int flip = abs(int(v0->degree() - 1 - v0Deg)) +
+    abs(int(v1->degree() - 1 - v1Deg)) +
+    abs(int(v2->degree() + 1 - v2Deg)) +
+    abs(int(v3->degree() + 1 - v3Deg));
     return flip < no_flip;
 }
 
@@ -770,7 +775,12 @@ void MeshResampler::remeshing(HalfedgeMesh& mesh)
         } while (h != v->halfedge());
 
         sum /= count;
-        v->position = sum;
+//        v->position = sum;
+        v->centroid = sum;
+    }
+    
+    for (VertexIter v = mesh.verticesBegin(); v != mesh.verticesEnd(); v++) {
+        v->position = v->centroid;
     }
 }
 
