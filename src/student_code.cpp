@@ -755,6 +755,23 @@ void MeshResampler::remeshing(HalfedgeMesh& mesh)
             mesh.flipEdge(e);
         }
     }
+
+    // Move all vertices to the middle of all vertices
+    for (VertexIter v = mesh.verticesBegin(); v != mesh.verticesEnd(); v++) {
+        HalfedgeCIter h = v->halfedge();      // get the outgoing half-edge of the vertex
+        Vector3D sum = Vector3D();
+        int count = 0;
+        do {
+            HalfedgeCIter h_twin = h->twin(); // get the opposite half-edge
+            VertexCIter neighbor = h_twin->vertex();
+            sum += neighbor->position;
+            count += 1;
+            h = h_twin->next();               // move to the next outgoing half-edge of the vertex
+        } while (h != v->halfedge());
+
+        sum /= count;
+        v->position = sum;
+    }
 }
 
 int valence(VertexIter v0, VertexIter v1, VertexIter v2, VertexIter v3) {
