@@ -52,7 +52,7 @@
       </BuildableProductRunnable>
       <CommandLineArguments>
          <CommandLineArgument
-            argument = "../dae/remeshCow.dae"
+            argument = "../dae/CBlucy.dae"
             isEnabled = "YES">
          </CommandLineArgument>
       </CommandLineArguments>

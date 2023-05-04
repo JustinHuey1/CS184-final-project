@@ -543,6 +543,114 @@ namespace CGL
         this->score = cost;
     }
 
+    // Return whether to flip or not
+    bool should_flip(VertexIter v0, VertexIter v1, VertexIter v2, VertexIter v3) {
+        // Calculate the valence difference before and after the flipl
+        int v0Deg = v0->isBoundary() ? 4 : 6;
+        int v1Deg = v1->isBoundary() ? 4 : 6;
+        int v2Deg = v2->isBoundary() ? 4 : 6;
+        int v3Deg = v3->isBoundary() ? 4 : 6;
+        
+        int no_flip = abs(int(v0->degree() - v0Deg)) +
+            abs(int(v1->degree() - v1Deg)) +
+            abs(int(v2->degree() - v2Deg)) +
+            abs(int(v3->degree() - v3Deg));
+        // If flip, v0 v1 valence -1, v2 v3 valence + 1
+        int flip = abs(int(v0->degree() - 1 - v0Deg)) +
+        abs(int(v1->degree() - 1 - v1Deg)) +
+        abs(int(v2->degree() + 1 - v2Deg)) +
+        abs(int(v3->degree() + 1 - v3Deg));
+        return flip < no_flip;
+    }
+
+    void MeshResampler::remeshing(HalfedgeMesh& mesh)
+    {
+        // Compute mean edge length
+        double totalEdgeLength = 0;
+        for (EdgeIter e = mesh.edgesBegin(); e != mesh.edgesEnd(); e++) {
+            totalEdgeLength += e->length();
+        }
+        double meanEdgeLength = totalEdgeLength / mesh.nEdges();
+        // Split edges over 4/3 of mean
+        for (EdgeIter e = mesh.edgesBegin(); e != mesh.edgesEnd(); ) {
+            EdgeIter currentEdge = e;
+            e++;
+
+            if (currentEdge->length() > 4.0 / 3.0 * meanEdgeLength) {
+                mesh.splitEdge(currentEdge);
+            }
+        }
+
+        
+        for (EdgeIter e = mesh.edgesBegin(); e != mesh.edgesEnd(); ) {
+            EdgeIter currentEdge = e;
+            e++;
+
+            if (currentEdge->length() < 4.0 / 5.0 * meanEdgeLength) {
+                // Check if e will get decimated by collapse
+                HalfedgeIter h0 = currentEdge->halfedge();
+                HalfedgeIter h1 = h0->next();
+                HalfedgeIter h2 = h1->next();
+
+                HalfedgeIter h3 = h0->twin();
+                HalfedgeIter h4 = h3->next();
+                HalfedgeIter h5 = h4->next();
+
+                EdgeIter e1 = h1->edge();
+                EdgeIter e4 = h5->edge();
+                // e0 e1 e4 will get deleted
+                while (e == e1 || e == e4) {
+                    e++;
+                }
+                
+                // Then collapse
+                mesh.collapseEdge(currentEdge);
+            }
+        }
+
+        // Flip edges that are not optimal, from the haoli slide
+        for (EdgeIter e = mesh.edgesBegin(); e != mesh.edgesEnd(); e++) {
+            HalfedgeIter h0 = e->halfedge();
+            HalfedgeIter h1 = h0->twin();
+            HalfedgeIter h2 = h0->next()->next();
+            HalfedgeIter h3 = h1->next()->next();
+
+            VertexIter v0 = h0->vertex();
+            VertexIter v1 = h1->vertex();
+            VertexIter v2 = h2->vertex();
+            VertexIter v3 = h3->vertex();
+
+            bool shouldFlip = should_flip(v0, v1, v2, v3);
+            if (shouldFlip) {
+                mesh.flipEdge(e);
+            }
+        }
+
+        // Move all vertices to the middle of all vertices
+        for (VertexIter v = mesh.verticesBegin(); v != mesh.verticesEnd(); v++) {
+            HalfedgeCIter h = v->halfedge();      // get the outgoing half-edge of the vertex
+            Vector3D sum = Vector3D();
+            int count = 0;
+            do {
+                HalfedgeCIter h_twin = h->twin(); // get the opposite half-edge
+                VertexCIter neighbor = h_twin->vertex();
+                sum += neighbor->position;
+                count += 1;
+                h = h_twin->next();               // move to the next outgoing half-edge of the vertex
+            } while (h != v->halfedge());
+
+            sum /= count;
+    //        v->position = sum;
+            v->centroid = sum;
+        }
+        
+        for (VertexIter v = mesh.verticesBegin(); v != mesh.verticesEnd(); v++) {
+            v->position = v->centroid;
+        }
+    }
+
+
+
   Vector3D neighbor_position_summer(VertexIter v) {
       Vector3D sum = Vector3D();
       HalfedgeCIter h = v->halfedge();      // get the outgoing half-edge of the vertex
@@ -663,108 +771,3 @@ namespace CGL
   }
 }
 
-// Return whether to flip or not
-bool should_flip(VertexIter v0, VertexIter v1, VertexIter v2, VertexIter v3) {
-    // Calculate the valence difference before and after the flip
-    int v0Deg = v0->isBoundary() ? 4 : 6;
-    int v1Deg = v1->isBoundary() ? 4 : 6;
-    int v2Deg = v2->isBoundary() ? 4 : 6;
-    int v3Deg = v3->isBoundary() ? 4 : 6;
-    
-    int no_flip = abs(int(v0->degree() - v0Deg)) +
-        abs(int(v1->degree() - v1Deg)) +
-        abs(int(v2->degree() - v2Deg)) +
-        abs(int(v3->degree() - v3Deg));
-    // If flip, v0 v1 valence -1, v2 v3 valence + 1
-    int flip = abs(int(v0->degree() - 1 - v0Deg)) +
-    abs(int(v1->degree() - 1 - v1Deg)) +
-    abs(int(v2->degree() + 1 - v2Deg)) +
-    abs(int(v3->degree() + 1 - v3Deg));
-    return flip < no_flip;
-}
-
-void MeshResampler::remeshing(HalfedgeMesh& mesh)
-{
-    // Compute mean edge length
-    double totalEdgeLength = 0;
-    for (EdgeIter e = mesh.edgesBegin(); e != mesh.edgesEnd(); e++) {
-        totalEdgeLength += e->length();
-    }
-    double meanEdgeLength = totalEdgeLength / mesh.nEdges();
-    // Split edges over 4/3 of mean
-    for (EdgeIter e = mesh.edgesBegin(); e != mesh.edgesEnd(); ) {
-        EdgeIter currentEdge = e;
-        e++;
-
-        if (currentEdge->length() > 4.0 / 3.0 * meanEdgeLength) {
-            mesh.splitEdge(currentEdge);
-        }
-    }
-
-    
-    for (EdgeIter e = mesh.edgesBegin(); e != mesh.edgesEnd(); ) {
-        EdgeIter currentEdge = e;
-        e++;
-
-        if (currentEdge->length() < 4.0 / 5.0 * meanEdgeLength) {
-            // Check if e will get decimated by collapse
-            HalfedgeIter h0 = currentEdge->halfedge();
-            HalfedgeIter h1 = h0->next();
-            HalfedgeIter h2 = h1->next();
-
-            HalfedgeIter h3 = h0->twin();
-            HalfedgeIter h4 = h3->next();
-            HalfedgeIter h5 = h4->next();
-
-            EdgeIter e1 = h1->edge();
-            EdgeIter e4 = h5->edge();
-            // e0 e1 e4 will get deleted
-            while (e == e1 || e == e4) {
-                e++;
-            }
-            
-            // Then collapse
-            mesh.collapseEdge(currentEdge);
-        }
-    }
-
-    // Flip edges that are not optimal, from the haoli slide
-    for (EdgeIter e = mesh.edgesBegin(); e != mesh.edgesEnd(); e++) {
-        HalfedgeIter h0 = e->halfedge();
-        HalfedgeIter h1 = h0->twin();
-        HalfedgeIter h2 = h0->next()->next();
-        HalfedgeIter h3 = h1->next()->next();
-
-        VertexIter v0 = h0->vertex();
-        VertexIter v1 = h1->vertex();
-        VertexIter v2 = h2->vertex();
-        VertexIter v3 = h3->vertex();
-
-        bool shouldFlip = should_flip(v0, v1, v2, v3);
-        if (shouldFlip) {
-            mesh.flipEdge(e);
-        }
-    }
-
-    // Move all vertices to the middle of all vertices
-    for (VertexIter v = mesh.verticesBegin(); v != mesh.verticesEnd(); v++) {
-        HalfedgeCIter h = v->halfedge();      // get the outgoing half-edge of the vertex
-        Vector3D sum = Vector3D();
-        int count = 0;
-        do {
-            HalfedgeCIter h_twin = h->twin(); // get the opposite half-edge
-            VertexCIter neighbor = h_twin->vertex();
-            sum += neighbor->position;
-            count += 1;
-            h = h_twin->next();               // move to the next outgoing half-edge of the vertex
-        } while (h != v->halfedge());
-
-        sum /= count;
-//        v->position = sum;
-        v->centroid = sum;
-    }
-    
-    for (VertexIter v = mesh.verticesBegin(); v != mesh.verticesEnd(); v++) {
-        v->position = v->centroid;
-    }
-}
