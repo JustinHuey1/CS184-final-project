@@ -700,6 +700,7 @@ void MeshResampler::remeshing(HalfedgeMesh& mesh)
             mesh.splitEdge(currentEdge);
         }
     }
+
     
     for (EdgeIter e = mesh.edgesBegin(); e != mesh.edgesEnd(); ) {
         EdgeIter currentEdge = e;

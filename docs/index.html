@@ -31,6 +31,349 @@
 </head>
 
 <body>
+    <h1>
+        Final Report
+    </h1>
+
+    <a target="_blank" href="https://youtu.be/8X-ybWH52PY">Final Project Video</a>
+
+    <h3>
+        Abstract
+    </h3>
+    <p>
+        In this project, we decided to implement mesh simplification and remeshing based on our implementation of project 2. In the first part, we implemented mesh simplification by simplification via quadric error. The second part of our project consists of remeshing using the isometric remeshing algorithm. The reason why we choose to do this project is because some meshes have a lot of unnecessary triangles and simplification can save a lot of time and space in memory. Mesh simplification and remeshing are important because mesh editing processes are widely used and especially when we are working with larger, more complicated meshes, computational time and space in memory can become more vital. The problem of remeshing is challenging because it requires computational depth in order to make the mesh more realistic and good looking. We can use simplification to better compute the triangles in the meshes, primarily their location and how they are oriented to be able to use less triangles in the mesh and still create a similar looking mesh to the more inefficient one. We can use remeshing to find a better representation of the same surface to make the mesh look better with the same amount of triangles and make the triangles all have uniform shape and size.
+    </p>
+
+    <h3>
+        Technical approach
+    </h3>
+
+    <p>
+        For mesh simplification, we decided to implement this via quadric error. We used quadric error rather than primarily using edge lengths since we wanted a more efficient and optimized approach. This approach allows us to compute things much faster due to using approximations and also join unconnected regions of models, which makes the mesh look more like the original and preserves the general shape much better.
+    </p>
+    <p>
+        To be able to simplify the mesh, this required collapsing edges, so we tackled this issue first. We implemented this similarly to how we implemented the other local mesh operations in project 2. We first started by drawing out the triangles and the result of calling edge collapse on it. This guided how we coded the function to be able to properly change some pointers for the components of the mesh and deleted some accordingly to the result of edge collapse. We did it according to our diagram:
+    </p>
+
+    <div align="middle">
+        <table>
+            <tr align="center">
+                <td>
+                    <img src="images/image5.png" align="middle" width="200px"/>
+                    <figcaption>Diagram of pointer reassignment</figcaption>
+                </td>
+            </tr>
+        </table>
+    </div>
+    
+      <p>
+        After implementing edge collapse, we worked on the simplification algorithm. Our main inspiration was this slide in lecture:
+      </p>
+
+    <div align="middle">
+        <table>
+            <tr align="center">
+                <td>
+                    <img src="images/image11.png" align="middle" width="200px"/>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <p>
+        Some initial things we have which will be important later are a target number and a priority queue. The target number is the number of triangles we want to have at the end of one call to simplification. The priority queue will hold the quadric error cost. We then compute the quadric error matrix for each triangle, To compute quadric error matrix, we used this slide:  
+    </p>
+
+    <div align="middle">
+        <table>
+            <tr align="center">
+                <td>
+                    <img src="images/image14.png" align="middle" width="200px"/>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <p>
+        We loop through all the faces of the mesh and compute this matrix. The query point we used is just a vertex position on the face. Then for each vertex, we loop through its neighbor faces and and and sum up their quadric error. Then for each edge, we sum the quadric error at the endpoints and calculate their cost, which is talked about next. The next step of the algorithm is to collapse edges until the total number of edges reach the target number. In order to do that, we need to use a class called EdgeRecord to do this efficiently. EdgeRecord stores the edge, the cost of collapsing the edge, and the optimal point of the vertex when the edge is collapsed which minimizes the cost. The EdgeRecord is added to the priority queue in the previous step that loops through the edges, To calculate the optimal point, we solve for this vector from the garland paper:
+    </p>
+
+    <div align="middle">
+        <table>
+            <tr align="center">
+                <td>
+                    <img src="images/image13.png" align="middle" width="200px"/>
+                    <img src="images/image12.png" align="middle" width="200px"/>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <p>
+        The q are the elements within the quadric matrix. The cost is calculated by using the above equation. The meat of this algorithm occurs while the mesh has more faces than our target. While this is true, then we collapse the edge with the smallest cost (retrieved from the priority queue), get the quadric error of the new vertex m, and update the edges touching m.
+    </p>
+
+    <h3>
+        Problems
+    </h3>
+
+    <ul>
+        <li>
+            We originally used the ten triangle mesh from lecture to set up, but as we were doing it, we figured that it was too gruesome to do everything according to the ten triangles and would take too much time to set up and change all the pointers around. We also realized that we only necessarily needed the two triangles in the middle of the mesh and these were the things that were primarily changing. So with this in mind, we set up and rearranged pointers according to this.        
+        </li>
+        <li>
+            When simplifying a mesh several times, it would error and our program crashed. This was due to calling edge collapse on certain edges. We were able to fix this by using this stack over flow post https://stackoverflow.com/questions/27049163/mesh-simplification-edge-collapse-conditions. We had to make sure that our mesh remained manifold after edges collapsed. We mainly just checked for connectivity. We have to make sure that one each side of the collapsed edge, only one pair of edges are merged. This was fixed by counting the joint neighor vertices of the two merging vertices and ensuring that there are exactly 2.
+        </li>
+        <li>
+            Our quadric error calculation was wrong and the resulting output mesh becomes very weird. We fixed this problem by consulting the paper noted above and it works.
+        </li>
+    </ul>
+
+    <div align="middle">
+        <table>
+            <tr align="center">
+                <td>
+                    <img src="images/image7.png" align="middle" width="200px"/>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <h3>
+        Technical approach
+    </h3>
+
+    <p>
+        In order to implement isometric remeshing, we looked up several online sources in order to figure out the implementation details. First we consult the lecture slides on isometric remeshing, and it claims that it has 4 steps. The first step is to calculate the mean edge length of all the edges in the mesh, then split any edge that has length greater than 4/3 of the mean edge length. The second step is to collapse all edges in the mesh that has length less than ⅘ of the mean edge length. Then the third step is to flip edges that improve vertex degree. The fourth step is to center vertices tangentially and to do that we calculate the average centroid of all the vertices of the neighboring vertices, then we set the location of the vertex to that location. 
+    </p>
+
+    <div align="middle">
+        <table>
+            <tr align="center">
+                <td>
+                    <img src="images/image9.png" align="middle" width="200px"/>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <h3>
+        Problems
+    </h3>
+
+    <p>
+        We initially did not understand what it means to flip edges to improve vertex degree, but we looked at another source that is the lecture slide from another class. The slide tells us to calculate valence, which is like the degree of vertex. The slide said that the optimal valence for a boundary vertex is 4 while the optimal valence for a regular vertex is 6. Then we can calculate the error of valence before and after the flip by subtracting 4 or 6 to the current valence of the vertex, then figure out whether or not the flipped vertex has a smaller error in terms of valence. 
+
+    </p>
+
+    <div align="middle">
+        <table>
+            <tr align="center">
+                <td>
+                    <img src="images/image10.png" align="middle" width="200px"/>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <h3>
+        Lessons
+    </h3>
+
+    <p>
+        By implementing isometric remeshing, we learned that remeshing is generally just a method to remodel the mesh in another way that looks more fitting compared to the previous model. Therefore, we learned that remeshing is a tool we can use to make the mesh look better.
+
+    </p>
+
+    <h3>
+        Results
+    </h3>
+
+    <h5>
+        Edge collapse
+    </h5>
+
+    <div align="middle">
+        <table>
+            <tr align="center">
+                <td>
+                    <img src="images/image1.png" align="middle" width="200px"/>
+                    <figcaption>original</figcaption>
+                </td>
+            </tr>
+            <tr align="center">
+                <td>
+                    <img src="images/image6.1.png" align="middle" width="200px"/>
+                </td>
+                <td>
+                    <img src="images/image6.2.png" align="middle" width="200px"/>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <h5>
+        Simplification
+    </h5>
+
+    <p>
+        Teapot
+    </p>
+
+    <div align="middle">
+        <img src="images/teapot.gif" align="middle" width="50%" />
+    </div>
+
+    <div align="middle">
+        <table style="width:100%">
+          <tr align="center">
+            <td>
+              <img src="images/image1.png" align="middle" width="200px"/>
+              <figcaption>Normal</figcaption>
+            </td>
+            <td>
+              <img src="images/image8.png" align="middle" width="200px"/>
+              <figcaption>1 call of subdivision</figcaption>
+            </td>
+          </tr>
+        <tr align="center">
+            <td>
+                <img src="images/image2.png" align="middle" width="200px"/>
+                <figcaption>3 calls</figcaption>
+            </td>
+            <td>
+                <img src="images/image3.png" align="middle" width="200px"/>
+                <figcaption>5 calls</figcaption>
+            </td>
+        </tr>
+        <tr align="center">
+            <td>
+                <img src="images/image4.png" align="middle" width="200px"/>
+                <figcaption>7 calls</figcaption>
+            </td>
+        </tr>
+        </table>
+      </div>
+
+    <p>
+        Hotdog
+    </p>
+
+    <div align="middle">
+        <img src="images/hotdog.gif" align="middle" width="50%" />
+    </div>
+
+    <div align="middle">
+        <table style="width:100%">
+          <tr align="center">
+            <td>
+              <img src="images/image16.png" align="middle" width="200px"/>
+              <figcaption>Normal</figcaption>
+            </td>
+            <td>
+              <img src="images/image15.png" align="middle" width="200px"/>
+              <figcaption>1 call of subdivision</figcaption>
+            </td>
+          </tr>
+        <tr align="center">
+            <td>
+                <img src="images/image17.png" align="middle" width="200px"/>
+                <figcaption>3 calls</figcaption>
+            </td>
+            <td>
+                <img src="images/image18.png" align="middle" width="200px"/>
+                <figcaption>4 calls</figcaption>
+            </td>
+        </tr>
+        <tr align="center">
+            <td>
+                <img src="images/image19.png" align="middle" width="200px"/>
+                <figcaption>5 calls</figcaption>
+            </td>
+        </tr>
+        </table>
+      </div>
+
+      <h5>
+        Remeshing
+      </h5>
+
+      <p>
+        Cow
+      </p>
+
+      <div align="middle">
+        <table style="width:100%">
+          <tr align="center">
+            <td>
+              <img src="images/image21.png" align="middle" width="200px"/>
+              <figcaption>normal</figcaption>
+            </td>
+            <td>
+              <img src="images/image20.png" align="middle" width="200px"/>
+              <figcaption>remeshed</figcaption>
+            </td>
+          </tr>
+        </table>
+      </div>
+
+      <p>
+        Hotdog
+      </p>
+
+      <div align="middle">
+        <table style="width:100%">
+          <tr align="center">
+            <td>
+              <img src="images/image15.png" align="middle" width="200px"/>
+              <figcaption>normal</figcaption>
+            </td>
+            <td>
+              <img src="images/image22.png" align="middle" width="200px"/>
+              <figcaption>remeshed</figcaption>
+            </td>
+          </tr>
+        </table>
+      </div>
+
+      <h3>
+        Resources
+    </h3>
+
+    <ul>
+        <li>
+            Lecture slides
+        </li>
+        <ul>
+            <li>https://cs184.eecs.berkeley.edu/sp23/lecture/8/mesh-representations-and-geometr</li>
+            <li>http://graphics.stanford.edu/courses/cs468-10-fall/LectureSlides/14_Remeshing1.pdf</li>
+            <li>https://www.hao-li.com/cs599-ss2015/slides/Lecture09.1.pdf</li>
+        </ul>
+        <li>
+            Project 2 code as starter code
+        </li>
+        <li>
+            Papers
+        </li>
+        <ul>
+           <li>https://www.cs.cmu.edu/~./garland/Papers/quadrics.pdf </li>
+        </ul>
+        <li>
+            Stackoverflow
+        </li>
+        <ul>
+            https://stackoverflow.com/questions/27049163/mesh-simplification-edge-collapse-conditions
+        </ul>
+    </ul>
+
+    <h3>
+        Contributions
+    </h3>
+
+    <p>
+        We all did the initial research to find how to implement the algorithms. During our time working, we mainly did pair programming and talked and gave ideas while one person was writing the code. For the deliverables, we each did different things and brought it all together. Some people worked on the video and others worked on writing it out. 
+
+    </p>
 
     <h1>
         Milestone status report
@@ -59,7 +402,7 @@
             <td>
               <img src="images/image6.1.png" align="middle" width="200px"/>
               <img src="images/image6.2.png" align="middle" width="200px"/>
-              <figcaption>Edge collapse result5</figcaption>
+              <figcaption>Edge collapse result</figcaption>
             </td>
           </tr>
         </table>
